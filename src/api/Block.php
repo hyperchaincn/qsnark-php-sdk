@@ -16,13 +16,13 @@ class Block extends request\Request
 
   public function query_block_by_number($number)
   {
-    $url = self::API_CREATE_ACCOUNT . "?type=number&value=$number";
+    $url = self::API_QUERY_SINGLE_BLOCK . "?type=number&value=$number";
     return $this->get($url);
   }
 
   public function query_block_by_hash($hash)
   {
-    $url = self::API_CREATE_ACCOUNT . "?type=hash&value=$hash";
+    $url = self::API_QUERY_SINGLE_BLOCK . "?type=hash&value=$hash";
     return $this->get($url);
   }
 
