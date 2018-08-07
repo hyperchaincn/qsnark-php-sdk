@@ -32,39 +32,7 @@ print_r($response);
 
 * 当前 SDK 使用趣链开发者平台 v1 版本的 API
 * 所有接口返回的数据的格式都是键值对数组（获取 payload 接口例外，后期会统一进行规范）
-* 初始化 Qsnark 实例时，sdk 会自动获取 `access token`，并且也会在 token 过期后，自动根据 `refresh token` 获取新的 `access token`
-
-```php
-// Request.php
-private function handle_request($url, $options)
-{
-  try {
-    $context = stream_context_create($options);
-    $response = file_get_contents($url, false, $context);
-
-    if ($response === false) {
-      return json_decode('{"err": "接口调用失败"}', true);
-    }
-
-    $result = json_decode($response, true);
-
-    // code 1008，invalid access token
-    if (abs($result['Code']) === 1008) {
-      $this->refresh_access_token();
-
-      // update auth token
-      $options['http']['header'] = "Authorization: " . $GLOBALS['sdk_access_token'] . "\r\n";
-
-      // request again
-      $this->handle_request($url, $options);
-    }
-
-    return $result;
-  } catch (Exception $e) {
-    return json_decode('{"err": "' . $e->getMessage() . '"}', true);
-  }
-}
-```
+* 初始化 Qsnark 实例时，sdk 会自动获取 `access token`，并且也会在 token 过期后，自动根据 `refresh token` 获取新的 `access token` （细节参见 `Request.php` 的 `handle_request()` 方法）
 
 ## 初始化 SDK 实例
 
@@ -84,9 +52,7 @@ $qsnark = new Qsnark(array(
 ));
 ```
 
-## 授权码
-
-> `$qsnark->token`
+## 授权码 `$qsnark->token`
 
 * **获取授权码**
   * `get_access_token()`
@@ -102,9 +68,7 @@ $response = $qsnark->token->get_access_token();
 $response = $qsnark->token->refresh_access_token();
 ```
 
-## 账号
-
-> `$qsnark->account`
+## 账号 `$qsnark->account`
 
 * **新建账号**
   * `create_account()`
@@ -113,9 +77,7 @@ $response = $qsnark->token->refresh_access_token();
 $response = $qsnark->account->create_account();
 ```
 
-## 区块
-
-> `$qsnark->block`
+## 区块 `$qsnark->block`
 
 * **根据区块编号查询单个区块**
   * `query_block_by_number(int $number)`
@@ -155,9 +117,7 @@ $to = 1030;
 $response = $qsnark->block->query_blocks_by_range($from, $to);
 ```
 
-## 智能合约
-
-> `$qsnark->constract`
+## 智能合约 `$qsnark->constract`
 
 * **编译合约**
   * `compile_contract(array $options)`
@@ -247,9 +207,7 @@ $address = '0x51180905345b1d1def37f2fde487e73c769dc2e0';
 $response = $qsnark->contract->query_contract_status($address);
 ```
 
-## 交易
-
-> `$qsnark->transaction`
+## 交易 `$qsnark->transaction`
 
 * **查询区块链交易总数**
   * `count_transaction()`
