@@ -30,7 +30,41 @@ print_r($response);
 
 ## 规范
 
-* 所有接口返回的数据的格式都是键值对数组
+* 当前 SDK 使用趣链开发者平台 v1 版本的 API
+* 所有接口返回的数据的格式都是键值对数组（获取 payload 接口例外，后期会统一进行规范）
+* 初始化 Qsnark 实例时，sdk 会自动获取 `access token`，并且也会在 token 过期后，自动根据 `refresh token` 获取新的 `access token`
+
+```php
+// Request.php
+private function handle_request($url, $options)
+{
+  try {
+    $context = stream_context_create($options);
+    $response = file_get_contents($url, false, $context);
+
+    if ($response === false) {
+      return json_decode('{"err": "接口调用失败"}', true);
+    }
+
+    $result = json_decode($response, true);
+
+    // code 1008，invalid access token
+    if (abs($result['Code']) === 1008) {
+      $this->refresh_access_token();
+
+      // update auth token
+      $options['http']['header'] = "Authorization: " . $GLOBALS['sdk_access_token'] . "\r\n";
+
+      // request again
+      $this->handle_request($url, $options);
+    }
+
+    return $result;
+  } catch (Exception $e) {
+    return json_decode('{"err": "' . $e->getMessage() . '"}', true);
+  }
+}
+```
 
 ## 初始化 SDK 实例
 
@@ -55,12 +89,14 @@ $qsnark = new Qsnark(array(
 > `$qsnark->token`
 
 * **获取授权码**
+  * `get_access_token()`
 
 ```php
 $response = $qsnark->token->get_access_token();
 ```
 
 * **获取最新的授权码**
+  * `refresh_access_token()`
 
 ```php
 $response = $qsnark->token->refresh_access_token();
@@ -71,6 +107,7 @@ $response = $qsnark->token->refresh_access_token();
 > `$qsnark->account`
 
 * **新建账号**
+  * `create_account()`
 
 ```php
 $response = $qsnark->account->create_account();
@@ -81,32 +118,40 @@ $response = $qsnark->account->create_account();
 > `$qsnark->block`
 
 * **根据区块编号查询单个区块**
+  * `query_block_by_number(int $number)`
 
 ```php
 $number = 10223;
+
 $response = $qsnark->block->query_block_by_number($number);
 ```
 
 * **根据区块hash查询单个区块**
+  * `query_block_by_hash(string $hash)`
 
 ```php
 $hash = "0x502ca40015f8f64f2b98987c10201b4e5fd58c2f33a79cf0dc2847d03cc35152";
+
 $response = $qsnark->block->query_block_by_hash($hash);
 ```
 
 * **以分页的方式查询多个区块信息**
+  * `query_blocks_by_page(int $page, int $page_size)`
 
 ```php
 $page = 1;
 $page_size = 10;
+
 $response = $qsnark->block->query_blocks_by_page($page, $page_size);
 ```
 
 * **根据区块号范围查询多个区块信息**
+  * `query_blocks_by_range(int $from, int $to)`
 
 ```php
 $from = 1024;
 $to = 1030;
+
 $response = $qsnark->block->query_blocks_by_range($from, $to);
 ```
 
@@ -115,16 +160,21 @@ $response = $qsnark->block->query_blocks_by_range($from, $to);
 > `$qsnark->constract`
 
 * **编译合约**
+  * `compile_contract(array $options)`
 
 ```php
 $options = array(
   "CTCode" => "pragma solidity ^0.4.0;\n\ncontract HelloWorld{\n    string str = \"hello world\";\n    \n    function update(bytes32[] amount) returns (address, bytes32[], string){\n        return (msg.sender, amount, str);\n    }\n}",
 );
+
 $response = $qsnark->contract->compile_contract($options);
 ```
 
 * **异步部署合约：** 直接返回交易的hash值，但不能保证合约一定能部署成功，一般会通过查询交易hash是否有数据来判断是否部署成功
+  * `deploy_contract_async(array $options)`
+
 * **同步部署合约：** 只有合约部署成功或失败后，才会返回数据
+  * `deploy_contract_sync(array $options)`
 
 ```php
 $options = array(
@@ -140,6 +190,7 @@ $response = $qsnark->contract->deploy_contract_sync($options);
 ```
 
 * **获取 Payload**
+  * `get_payload(array $options)`
 
 ```php
 $options = array(
@@ -147,11 +198,15 @@ $options = array(
   "Args" => [["1","345"]], 
   "Func" => "update" 
 );
+
 $response = $qsnark->contract->get_payload($options);
 ```
 
 * **异步调用合约：** 直接返回交易的hash值，但不能保证合约一定能调用成功，一般会通过查询交易hash是否有数据来判断是否调用成功
+  * `invoke_contract_async(array $options)`
+
 * **同步调用合约：** 只有合约调用成功或失败后，才会返回数据
+  * `invoke_contract_sync(array $options)`
 
 ```php
 $options = array(
@@ -169,6 +224,7 @@ $response = $qsnark->contract->invoke_contract_sync($options);
 ```
 
 * **维护智能合约：** 可对部署后的合约进行升级/冻结/解冻
+  * `maintain_contract(array $options)`
 
 ```php
 // Operationt: 升级合约填 1,冻结合约填 2,解冻合约填 3
@@ -183,9 +239,11 @@ $response = $qsnark->contract->maintain_contract($options);
 ```
 
 * **查询智能合约状态**
+  * `query_contract_status(string $address)`
 
 ```php
 $address = '0x51180905345b1d1def37f2fde487e73c769dc2e0';
+
 $response = $qsnark->contract->query_contract_status($address);
 ```
 
@@ -194,29 +252,36 @@ $response = $qsnark->contract->query_contract_status($address);
 > `$qsnark->transaction`
 
 * **查询区块链交易总数**
+  * `count_transaction()`
 
 ```php
 $response = $qsnark->transaction->count_transaction();
 ```
 
 * **通过交易哈希值查询单条交易信息**
+  * `query_transaction_by_hash(string $hash)`
 
 ```php
 $hash = '0x0d3ad8ac53087a858a86ddc5fb2cf8bf205f1ddbbdc19140c7f77b8a88d6dbf4';
+
 $response = $qsnark->transaction->query_transaction_by_hash($hash);
 ```
 
 * **通过交易哈希值查询交易回执信息**
+  * `query_txreceipt_by_hash(string $hash)`
 
 ```php
 $hash = '0x0d3ad8ac53087a858a86ddc5fb2cf8bf205f1ddbbdc19140c7f77b8a88d6dbf4';
+
 $response = $qsnark->transaction->query_txreceipt_by_hash($hash);
 ```
 
 * **根据时间戳范围查询非法交易**
+  * `query_all_illegal_transactions(int $start, int $end)`
 
 ```php
 $start = 1483228800000;
 $end = 1514764800000;
+
 $response = $qsnark->transaction->query_all_illegal_transactions($start, $end);
 ```
