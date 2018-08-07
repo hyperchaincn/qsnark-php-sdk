@@ -23,8 +23,6 @@ class Request
 
       $result = json_decode($response, true);
 
-      var_dump($result);
-
       // code 1008，invalid access token
       if (abs($result['Code']) === 1008) {
         $this->refresh_access_token();
